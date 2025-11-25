@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/hsk/',
   server: {
     fs: {
       // allow importing the shared data file located one level up
