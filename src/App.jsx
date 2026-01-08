@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { decks } from '../../data.js'
+import { decks } from './data.js'
 import './App.css'
 
 const STORAGE_KEY = 'hsk-combined-status'
@@ -229,10 +229,10 @@ function App() {
         <header className="w-full flex flex-col items-center text-center mb-6 gap-4">
           <div className="space-y-1">
             <h1 className={`text-3xl font-bold ${headerText}`}>HSK Flashcard Master</h1>
-            <p className={`text-sm ${subHeaderText}`}>HSK1 &amp; HSK2 • Vocabulary &amp; Sentences</p>
+            <p className={`text-sm ${subHeaderText}`}>HSK1 &amp; HSK2 &amp; HSK3 • Vocabulary &amp; Sentences</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-center">
-            {['hsk1', 'hsk2'].map((l) => (
+            {['hsk1', 'hsk2', 'hsk3'].map((l) => (
               <button
                 key={l}
                 onClick={() => {
