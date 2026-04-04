@@ -5,6 +5,28 @@ import './App.css'
 const STORAGE_KEY = 'hsk-combined-status'
 const SELECT_KEY = 'hsk-custom-select'
 const THEME_KEY = 'hsk-theme'
+const levelOptions = Object.keys(decks)
+const levelSummary = levelOptions.map((item) => item.toUpperCase()).join(' / ')
+
+function getItemKey(item) {
+  return String(item.id ?? item.char)
+}
+
+function getStatusKey(level, deckType, item) {
+  return `${level}:${deckType}:${getItemKey(item)}`
+}
+
+function getLegacyStatusKey(level, deckType, item) {
+  return `${level}:${deckType}:${item.char}`
+}
+
+function getStatusValue(statuses, level, deckType, item) {
+  return statuses[getStatusKey(level, deckType, item)] ?? statuses[getLegacyStatusKey(level, deckType, item)]
+}
+
+function isSelected(selectionMap, item) {
+  return Boolean(selectionMap[getItemKey(item)] ?? selectionMap[item.char])
+}
 
 function useStatuses() {
   const [statuses, setStatuses] = useState(() => {
@@ -60,18 +82,18 @@ function App() {
 
   const filtered = useMemo(() => {
     if (deckType === 'words' && filterSelection === 'selection') {
-      return source.filter((item) => selectionMap[item.char])
+      return source.filter((item) => isSelected(selectionMap, item))
     }
     if (filterMode === 'review') {
-      return source.filter((item) => statuses[`${level}:${deckType}:${item.char}`] !== 'known')
+      return source.filter((item) => getStatusValue(statuses, level, deckType, item) !== 'known')
     }
     return [...source]
   }, [source, filterMode, statuses, level, deckType, filterSelection, selectionMap])
 
   const deck = useMemo(() => {
     if (shuffledDeck && shuffledDeck.length === filtered.length) {
-      const allowed = new Set(filtered.map((i) => i.char))
-      const aligned = shuffledDeck.filter((item) => allowed.has(item.char))
+      const allowed = new Set(filtered.map((item) => getItemKey(item)))
+      const aligned = shuffledDeck.filter((item) => allowed.has(getItemKey(item)))
       if (aligned.length === filtered.length) return aligned
     }
     return filtered
@@ -107,14 +129,14 @@ function App() {
   const current = deck[index]
   const total = deck.length
   const knownCount = decks[level][deckType].filter(
-    (item) => statuses[`${level}:${deckType}:${item.char}`] === 'known'
+    (item) => getStatusValue(statuses, level, deckType, item) === 'known'
   ).length
 
   function mark(status) {
     if (!current) return
     setStatuses((prev) => ({
       ...prev,
-      [`${level}:${deckType}:${current.char}`]: status,
+      [getStatusKey(level, deckType, current)]: status,
     }))
     if (status === 'known' && filterMode === 'review') {
       const nextLen = total - 1
@@ -155,15 +177,16 @@ function App() {
 
   const selectionCount = Object.keys(selectionMap).length
 
-  function toggleSelect(char) {
+  function toggleSelect(item) {
+    const itemKey = getItemKey(item)
     setSelected((prev) => {
       const currentMap = prev[selectionKey] || {}
       const nextMap = { ...currentMap }
-      if (nextMap[char]) {
-        delete nextMap[char]
+      if (nextMap[itemKey]) {
+        delete nextMap[itemKey]
       } else {
         if (Object.keys(currentMap).length >= 20) return prev
-        nextMap[char] = true
+        nextMap[itemKey] = true
       }
       return { ...prev, [selectionKey]: nextMap }
     })
@@ -175,8 +198,7 @@ function App() {
   }
 
   const progressPct = total ? ((index + 1) / total) * 100 : 0
-  const status =
-    current && (statuses[`${level}:${deckType}:${current.char}`] === 'known' ? 'known' : 'review')
+  const status = current && (getStatusValue(statuses, level, deckType, current) === 'known' ? 'known' : 'review')
 
   const surface = isDark
     ? 'bg-slate-800 text-slate-100 border-slate-700'
@@ -198,6 +220,31 @@ function App() {
     deckType === 'sentences'
       ? 'text-base lg:text-lg text-center px-6 lg:px-10 leading-relaxed'
       : 'text-xl text-center px-6 font-medium leading-relaxed'
+  const emptyState =
+    filterSelection === 'selection'
+      ? {
+          front: 'No Words Selected',
+          hint: 'Click "Edit Custom List"',
+          back: 'Your custom list is empty. Please select words to study.',
+        }
+      : filterMode === 'review'
+        ? {
+            front: 'Review Complete',
+            hint: 'Switch back to the full deck or choose another level.',
+            back: 'You have already marked every card in this deck as known.',
+          }
+        : deckType === 'sentences'
+          ? {
+              front: 'No Sentences Yet',
+              hint: 'Sentence practice is not available for this level yet.',
+              back: 'This level does not have a sentence deck yet.',
+            }
+          : {
+              front: 'No Cards',
+              hint: 'Choose another deck to keep studying.',
+              back: 'There are no cards to show right now.',
+            };
+
 
   return (
     <div
@@ -229,10 +276,10 @@ function App() {
         <header className="w-full flex flex-col items-center text-center mb-6 gap-4">
           <div className="space-y-1">
             <h1 className={`text-3xl font-bold ${headerText}`}>HSK Flashcard Master</h1>
-            <p className={`text-sm ${subHeaderText}`}>HSK1 &amp; HSK2 &amp; HSK3 • Vocabulary &amp; Sentences</p>
+            <p className={`text-sm ${subHeaderText}`}>{`${levelSummary} | Vocabulary & Sentences`}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-center">
-            {['hsk1', 'hsk2', 'hsk3'].map((l) => (
+            {levelOptions.map((l) => (
               <button
                 key={l}
                 onClick={() => {
@@ -337,10 +384,10 @@ function App() {
                 <div
                   className={`chinese-font ${frontSize} font-medium mb-4 ${headerText}`}
                 >
-                  {current ? current.char : 'Add Words'}
+                  {current ? current.char : emptyState.front}
                 </div>
                 <p className={`${mutedText} text-sm mt-4 font-medium animate-pulse`}>
-                  {current ? 'Tap to flip' : 'Click "Edit Custom List"'}
+                  {current ? 'Tap to flip' : emptyState.hint}
                 </p>
               </div>
 
@@ -354,7 +401,7 @@ function App() {
                 </div>
                 <div className="w-16 h-1 bg-indigo-400 rounded-full mb-4" />
                 <div className={englishSize}>
-                  {current ? current.en : 'Your custom list is empty. Please select words to study.'}
+                  {current ? current.en : emptyState.back}
                 </div>
                 {current && (
                   <button
@@ -540,11 +587,11 @@ function App() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto pr-1 flex-grow">
                 {source.map((item) => {
-                  const active = !!selectionMap[item.char]
+                  const active = isSelected(selectionMap, item)
                   return (
                     <button
-                      key={item.char}
-                      onClick={() => toggleSelect(item.char)}
+                      key={getItemKey(item)}
+                      onClick={() => toggleSelect(item)}
                       className={`text-left rounded-xl border p-3 transition focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
                         active
                           ? 'bg-indigo-50 border-indigo-200 text-indigo-800 ring-1 ring-indigo-200'

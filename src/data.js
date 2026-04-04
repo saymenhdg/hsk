@@ -1,3 +1,4 @@
+import { hsk4Words } from './hsk4.js'
 
 export const decks = {
   "hsk1": {
@@ -3335,6 +3336,10 @@ export const decks = {
       { "char": "最近", "pinyin": "zuìjìn", "en": "lately" },
       { "char": "作业", "pinyin": "zuòyè", "en": "homework" }
     ],
+    "sentences": []
+  },
+  "hsk4": {
+    "words": hsk4Words,
     "sentences": []
   }
 };
